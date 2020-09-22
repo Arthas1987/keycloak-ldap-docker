@@ -1,0 +1,63 @@
+version: '3'
+
+volumes:
+  mysql_data:
+    driver: local
+  ldap_data:
+    driver: local
+  ldap_config:
+    driver: local
+
+services:
+  mysql:
+    image: mysql:5.7
+    volumes:
+      - mysql_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: keycloak
+      MYSQL_USER: keycloak
+      MYSQL_PASSWORD: password
+    networks:
+      - backend
+  keycloak:
+    image: jboss/keycloak
+    environment:
+      DB_VENDOR: mysql
+      DB_ADDR: mysql
+      DB_DATABASE: keycloak
+      DB_USER: keycloak
+      DB_PASSWORD: password
+      KEYCLOAK_USER: admin
+      KEYCLOAK_PASSWORD: password
+      JDBC_PARAMS: "useSSL=false"
+    ports:
+      - 8080:8080
+    depends_on:
+      - mysql
+    networks:
+      - backend
+  ldap-server:
+    image: osixia/openldap:latest
+    volumes:
+      - ldap_data:/var/lib/ldap
+      - ldap_config:/etc/ldap/slapd.d
+    environment:
+      LDAP_ORGANISATION: "zju"
+      LDAP_DOMAIN: "zju"
+      LDAP_ADMIN_PASSWORD: "password"
+    networks:
+      - backend
+  ldap-admin:
+    image: osixia/phpldapadmin:latest
+    environment:
+      PHPLDAPADMIN_LDAP_HOSTS: "ldap-server"
+      PHPLDAPADMIN_HTTPS: "false"
+    ports:
+      - "8081:80"
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
